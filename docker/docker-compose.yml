@@ -1,0 +1,46 @@
+# ── TV-Automator Docker Compose ──────────────────────────────────
+# Run on an Ubuntu server with HDMI output to a monitor.
+#
+# Prerequisites:
+#   1. X11 server running on the host (usually automatic if you have a desktop)
+#   2. Allow Docker to access the display:  xhost +local:docker
+#   3. (Optional) GPU drivers installed for hardware video acceleration
+#
+# Usage:
+#   docker compose up -d              # Start in background
+#   ssh root@<tailscale-ip>           # Connect via Tailscale
+#   tv-automator                      # Launch the TUI
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  tv-automator:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: tv-automator
+
+    # Network: use host network for simplest X11 access and Tailscale
+    network_mode: host
+
+    # Display: pass through X11 socket for HDMI output
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - tv-automator-data:/data
+
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - PULSE_SERVER=unix:/run/user/1000/pulse/native
+      - DATA_DIR=/data
+
+    # GPU access for hardware-accelerated video decoding
+    devices:
+      - /dev/dri:/dev/dri
+
+    # Chrome needs larger shared memory
+    shm_size: 512mb
+
+    restart: unless-stopped
+
+volumes:
+  tv-automator-data:
+    driver: local

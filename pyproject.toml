@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tv-automator"
+version = "0.1.0"
+description = "Self-hosted sports streaming appliance with TUI control"
+requires-python = ">=3.11"
+dependencies = [
+    "textual>=0.47.0",
+    "playwright>=1.40.0",
+    "MLB-StatsAPI>=1.7.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "aiofiles>=23.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "textual-dev>=1.0",
+]
+
+[project.scripts]
+tv-automator = "tv_automator.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tv_automator"]
