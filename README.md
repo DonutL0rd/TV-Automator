@@ -1,113 +1,155 @@
-# 📺 TV-Automator
+# TV-Automator
 
-Self-hosted sports streaming appliance. Runs in Docker on an Ubuntu server connected to a TV via HDMI. Control it remotely through a terminal UI over SSH/Tailscale.
+Self-hosted sports streaming appliance. Runs in Docker on an Ubuntu server connected to a TV via HDMI. Control what's playing from any browser on your network through a web dashboard.
 
 ## What It Does
 
-1. **You start the Docker container** on your Ubuntu server
-2. **You SSH in** from another computer (via Tailscale)
-3. **You see today's game schedule** in a terminal UI
-4. **You select a game** → it starts playing on the TV
+1. **Start the Docker container** on your server
+2. **Open the dashboard** at `http://<server-ip>:5000/` from any device
+3. **Browse today's games** and click Home or Away to pick a feed
+4. **The game plays on your TV** via HLS streaming in Chrome
 
-The system uses Google Chrome in kiosk mode for playback (handles DRM natively) and the MLB Stats API for schedule data.
+Authentication is handled entirely via API (Okta password grant) — no browser login required. Provide your MLB.TV credentials in a `.env` file and the system logs in automatically on startup.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Ubuntu server with HDMI connected to a monitor/TV
-- Docker & Docker Compose installed
-- X11 display server running (standard Ubuntu desktop, or minimal Openbox)
-- Tailscale installed (for remote access)
+- Ubuntu server with HDMI connected to a TV
+- Docker & Docker Compose
+- A graphical session on the server (GDM, LightDM, or bare Xorg)
+- An MLB.TV subscription
 
-### 1. Clone & Build
+### 1. Clone & configure
 
 ```bash
 git clone <repo-url> TV-Automator
 cd TV-Automator
+cp .env.example .env
+```
 
-# Allow Docker to access the display
-xhost +local:docker
+Edit `.env` and add your MLB.TV credentials:
 
-# Build and start
+```
+MLB_USERNAME=you@example.com
+MLB_PASSWORD=yourpassword
+```
+
+### 2. Grant Docker access to the display
+
+The container needs permission to draw on the host's X display.
+
+```bash
+# One-time setup
+./scripts/setup-xhost.sh
+
+# Make it permanent (survives reboots)
+sudo cp systemd/tv-automator-xhost.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now tv-automator-xhost.service
+```
+
+### 3. Start the container
+
+```bash
 cd docker
 docker compose up -d
 ```
 
-### 2. Connect via SSH
+### 4. Open the dashboard
 
-```bash
-# From your other computer (via Tailscale)
-ssh root@<ubuntu-server-tailscale-ip>
-# Default password: tvautomator
-```
+Go to `http://<server-ip>:5000/` in any browser. You'll see today's MLB schedule. Click **Home** or **Away** on any live game to start streaming it on the TV.
 
-### 3. Launch the TUI
+## How It Works
 
-```bash
-tv-automator
-```
+### Authentication
 
-### 4. Login to MLB.TV
+TV-Automator authenticates with MLB.TV via Okta's resource owner password grant — the same API that official MLB apps use internally. No browser-based login, no CAPTCHAs, no fragile form-filling.
 
-Press `L` in the TUI. A browser window will open on the TV — log in with your MLB.TV credentials there. Your session is saved so you only need to do this once.
+On startup the system:
+1. POSTs your credentials to `ids.mlb.com` and receives an access token
+2. Initializes a GraphQL media session at `media-gateway.mlb.com`
+3. Tokens auto-refresh when they expire
 
-### 5. Watch a Game
+### Playback
 
-Use arrow keys to browse the schedule, press `Enter` to select a game. It starts playing on the TV.
+When you click a game:
+1. The backend queries the MLB media gateway for the game's HLS stream URL
+2. Chrome (running on the server's display) navigates to a local player page
+3. The player uses [hls.js](https://github.com/video-dev/hls.js/) to decode and play the adaptive HLS stream
+4. The video appears full-screen on the TV
 
-## TUI Controls
+This bypasses the MLB.TV web player entirely. No DRM issues, no ads overlay, no UI chrome — just the video feed.
 
-| Key | Action |
-|-----|--------|
-| `↑` `↓` | Navigate games |
-| `←` `→` | Previous/next day |
-| `t` | Jump to today |
-| `Enter` | Play selected game |
-| `l` | Login to MLB.TV |
-| `s` | Stop playback |
-| `r` | Refresh schedule |
-| `q` | Quit |
+### Schedule Data
+
+Game schedules come from the public [MLB Stats API](https://github.com/toddrob99/MLB-StatsAPI) (`statsapi` Python package). The scheduler polls every 60 seconds for live score updates.
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│  Docker Container                           │
-│                                             │
-│  ┌──────────┐    ┌───────────────────────┐  │
-│  │ TUI      │───▶│ Game Scheduler        │  │
-│  │ (Textual)│    │ (MLB Stats API)       │  │
-│  │          │    └───────────────────────┘  │
-│  │          │                               │
-│  │          │    ┌───────────────────────┐  │
-│  │          │───▶│ Browser Controller    │  │
-│  └──────────┘    │ (Playwright + Chrome) │  │
-│       ↑          └──────────┬────────────┘  │
-│       │                     │               │
-│  SSH/Tailscale         X11 Socket           │
-│                             │               │
-└─────────────────────────────┼───────────────┘
-                              │
-                         HDMI Output
-                              │
-                         ┌────▼────┐
-                         │   TV    │
-                         └─────────┘
+                Browser (laptop/phone)
+                         │
+                    http://:5000
+                         │
+┌────────────────────────┼─────────────────────────────┐
+│  Docker Container      │                             │
+│                        │                             │
+│  ┌─────────────────────▼──────────────────────────┐  │
+│  │  FastAPI + uvicorn (port 5000)                 │  │
+│  │                                                │  │
+│  │  GET  /           → Dashboard HTML             │  │
+│  │  GET  /api/games  → Schedule from Stats API    │  │
+│  │  POST /api/play   → Get stream URL → navigate  │  │
+│  │  POST /api/stop   → Stop playback             │  │
+│  │  GET  /player     → HLS video player page      │  │
+│  └──────┬────────────────────┬────────────────────┘  │
+│         │                    │                       │
+│  ┌──────▼───────┐    ┌──────▼──────────────────┐    │
+│  │ MLBSession   │    │ BrowserController       │    │
+│  │ (Okta auth + │    │ (Playwright + Chrome)   │    │
+│  │  GraphQL)    │    └──────────┬──────────────┘    │
+│  └──────────────┘               │                   │
+│                            X11 Socket               │
+└─────────────────────────────────┼───────────────────┘
+                                  │
+                             HDMI Output
+                                  │
+                             ┌────▼────┐
+                             │   TV    │
+                             └─────────┘
 ```
 
 ## Configuration
 
-Edit `config/default.yaml` or create `/data/config/user.yaml`:
+### Environment variables (`.env`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MLB_USERNAME` | Yes | MLB.TV account email |
+| `MLB_PASSWORD` | Yes | MLB.TV account password |
+| `DISPLAY` | No | X display (default: `:0`) |
+| `DATA_DIR` | No | Persistent data path (default: `/data`) |
+| `CHROME_PATH` | No | Chrome binary override |
+
+### Config file (`config/default.yaml`)
 
 ```yaml
 providers:
   mlb:
-    favorite_teams: ["NYY", "LAD"]  # Your teams
-    auto_start: false                # Auto-play when favorites go live
+    favorite_teams: ["NYY", "LAD"]   # 3-letter team codes
+    auto_start: false                 # Auto-play when favorites go live
 
 scheduler:
-  poll_interval: 60  # Seconds between schedule refreshes
+  poll_interval: 60                   # Seconds between schedule refreshes
+
+display:
+  resolution: "1920x1080"
+
+browser:
+  args:
+    - "--kiosk"
+    - "--autoplay-policy=no-user-gesture-required"
 ```
 
 ## Project Structure
@@ -119,29 +161,36 @@ TV-Automator/
 │   ├── docker-compose.yml
 │   ├── entrypoint.sh
 │   └── openbox-config/rc.xml
+├── scripts/
+│   ├── diagnose-display.sh
+│   └── setup-xhost.sh
+├── systemd/
+│   └── tv-automator-xhost.service
 ├── src/tv_automator/
-│   ├── main.py                    # Entry point
-│   ├── config.py                  # Configuration
+│   ├── main.py                        # Entry point (uvicorn)
+│   ├── config.py                      # Layered config (yaml + env)
+│   ├── web/
+│   │   └── app.py                     # FastAPI routes + dashboard HTML
 │   ├── providers/
-│   │   ├── base.py                # Provider interface
-│   │   └── mlb.py                 # MLB.TV adapter
+│   │   ├── base.py                    # Provider interface
+│   │   ├── mlb.py                     # MLB schedule (Stats API)
+│   │   └── mlb_session.py             # MLB auth + streams (Okta + GraphQL)
 │   ├── automator/
-│   │   └── browser_control.py     # Playwright + Chrome
-│   ├── scheduler/
-│   │   └── game_scheduler.py      # Schedule polling
-│   └── tui/
-│       ├── app.py                 # Textual TUI
-│       └── widgets/game_card.py   # Game display widget
+│   │   └── browser_control.py         # Chrome window management
+│   └── scheduler/
+│       └── game_scheduler.py          # Background schedule polling
 ├── config/default.yaml
+├── .env.example
 └── pyproject.toml
 ```
 
 ## Roadmap
 
-- [x] Phase 1: Single game playback with TUI control
-- [ ] Phase 2: Auto-start games, session persistence, live scores
-- [ ] Phase 3: Multiview (multiple simultaneous streams)
-- [ ] Phase 4: F1 TV provider, then NBA/NHL/NFL
+- [x] Phase 1: MLB game playback with web dashboard
+- [x] Phase 2: API-based auth (Okta), HLS streaming, home/away feed selection
+- [ ] Phase 3: Auto-start for favorite teams, live score push updates
+- [ ] Phase 4: Multiview (picture-in-picture / split-screen)
+- [ ] Phase 5: Additional providers (F1 TV, NBA, NHL, NFL)
 
 ## Development
 
@@ -149,10 +198,8 @@ TV-Automator/
 # Local dev (without Docker — needs Chrome installed)
 pip install -e ".[dev]"
 playwright install chromium
+cp .env.example .env  # fill in credentials
 python -m tv_automator.main
-
-# Run tests
-pytest
 ```
 
 ## License

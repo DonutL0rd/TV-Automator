@@ -122,6 +122,19 @@ class Config:
             else:
                 base[k] = v
 
+    @property
+    def mlb_username(self) -> str | None:
+        return os.getenv("MLB_USERNAME") or self.get("providers", {}).get("mlb", {}).get("username")
+
+    @property
+    def mlb_password(self) -> str | None:
+        return os.getenv("MLB_PASSWORD") or self.get("providers", {}).get("mlb", {}).get("password")
+
+    @property
+    def mlb_credentials(self) -> tuple[str, str] | None:
+        u, p = self.mlb_username, self.mlb_password
+        return (u, p) if u and p else None
+
     def _apply_env_overrides(self) -> None:
         if d := os.getenv("DATA_DIR"):
             self._data["data_dir"] = d

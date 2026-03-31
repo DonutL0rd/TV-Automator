@@ -24,7 +24,7 @@ class GameScheduler:
     - Fetch and cache today's game schedule
     - Track game status transitions (scheduled → live → final)
     - Trigger auto-start for favorite teams when games go live
-    - Provide the current schedule to the TUI
+    - Provide the current schedule to the web dashboard
     """
 
     def __init__(self, config: Config) -> None:

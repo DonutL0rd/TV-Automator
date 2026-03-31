@@ -4,24 +4,24 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tv-automator"
-version = "0.1.0"
-description = "Self-hosted sports streaming appliance with TUI control"
+version = "0.2.0"
+description = "Self-hosted sports streaming appliance with web dashboard"
 requires-python = ">=3.11"
 dependencies = [
-    "textual>=0.47.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.27.0",
     "playwright>=1.40.0",
     "MLB-StatsAPI>=1.7.0",
     "pyyaml>=6.0",
     "python-dotenv>=1.0.0",
-    "aiofiles>=23.0",
-    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
-    "textual-dev>=1.0",
+    "httpx>=0.27",
 ]
 
 [project.scripts]
