@@ -18,6 +18,23 @@ if [ -z "$DISPLAY" ]; then
 fi
 echo "[*] DISPLAY=$DISPLAY"
 
+# ── Find X11 auth cookie (try common locations) ──────────────────
+for xauth_candidate in \
+        "$XAUTHORITY" \
+        "/run/user/1000/gdm/Xauthority" \
+        "/run/user/1000/.mutter-Xwaylandauth."* \
+        "$HOME/.Xauthority" \
+        "/tmp/.Xauthority"; do
+    [ -z "$xauth_candidate" ] && continue
+    # Expand glob — skip if no match
+    [ -e "$xauth_candidate" ] || continue
+    export XAUTHORITY="$xauth_candidate"
+    if xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
+        echo "[*] X auth: $XAUTHORITY"
+        break
+    fi
+done
+
 # ── Check for a working X display; fall back to Xvfb ────────────
 if ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; then
     echo "[!] No X server at $DISPLAY — starting Xvfb on :99"

@@ -22,7 +22,7 @@ services:
 
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:ro
-      - /run/user/1000/pulse:/run/user/1000/pulse:ro
+      - /run/user/1000:/run/user/1000:ro   # covers gdm3 X auth + PulseAudio
       - tv-automator-data:/data
 
     env_file:
@@ -32,6 +32,7 @@ services:
       - DISPLAY=${DISPLAY:-:0}
       - PULSE_SERVER=unix:/run/user/1000/pulse/native
       - DATA_DIR=/data
+      - TZ=America/Los_Angeles
 
     devices:
       - /dev/dri:/dev/dri
