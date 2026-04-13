@@ -24,6 +24,7 @@ import httpx
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from tv_automator.automator.browser_control import BrowserController
 from tv_automator.automator.cec_control import CECController
@@ -38,7 +39,6 @@ log = logging.getLogger(__name__)
 # ── Templates ───────────────────────────────────────────────────
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _PLAYER_HTML = (_TEMPLATE_DIR / "player.html").read_text()
-_DASHBOARD_HTML = (_TEMPLATE_DIR / "dashboard.html").read_text()
 _SCREENSAVER_HTML = (_TEMPLATE_DIR / "screensaver.html").read_text()
 _YOUTUBE_HTML = (_TEMPLATE_DIR / "youtube.html").read_text()
 
@@ -714,9 +714,19 @@ def _game_to_dict(game: Game) -> dict:
 
 # ── Routes ───────────────────────────────────────────────────────
 
-@app.get("/", response_class=HTMLResponse)
+# Mount React static assets if built
+_FRONTEND_DIST = _TEMPLATE_DIR.parent / "frontend" / "dist"
+if (_FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
+
+@app.get("/", response_class=FileResponse)
+@app.get("/youtube", response_class=FileResponse)
+@app.get("/settings", response_class=FileResponse)
 async def dashboard():
-    return _DASHBOARD_HTML
+    index_file = _FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return HTMLResponse("React frontend not built. Run 'npm run build' in src/tv_automator/web/frontend.")
 
 
 @app.get("/api/games")
@@ -1545,6 +1555,9 @@ async def get_settings():
         "suggested_channels": {cid: name for cid, name in SUGGESTED_CHANNELS.items()},
         # Screensaver
         "screensaver_music_size": _config.get("screensaver", {}).get("music_size", "medium"),
+        # Navidrome
+        "navidrome_server_url": os.getenv("NAVIDROME_URL") or _config.get("navidrome", {}).get("server_url", ""),
+        "navidrome_username": os.getenv("NAVIDROME_USERNAME") or _config.get("navidrome", {}).get("username", ""),
     }
 
 
