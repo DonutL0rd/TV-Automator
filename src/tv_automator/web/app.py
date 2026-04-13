@@ -788,7 +788,7 @@ async def play_youtube(body: dict):
 
     # Build nav URL — support resume position
     resume_pos = body.get("resume_position", 0)
-    nav_url = f"http://127.0.0.1:5000/youtube?v={video_id}"
+    nav_url = f"http://127.0.0.1:5000/tv/youtube?v={video_id}"
     if resume_pos and resume_pos > 5:
         nav_url += f"&t={int(resume_pos)}"
 
@@ -2335,7 +2335,7 @@ async def screensaver_page():
     return _SCREENSAVER_HTML
 
 
-@app.get("/youtube", response_class=HTMLResponse)
+@app.get("/tv/youtube", response_class=HTMLResponse)
 async def youtube_page():
     return _YOUTUBE_HTML
 

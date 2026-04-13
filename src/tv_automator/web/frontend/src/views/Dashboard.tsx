@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTvAutomator, type Game } from '../hooks/useTvAutomator';
-import { Play, Tv, Calendar } from 'lucide-react';
+import { Play, Tv, Calendar, AlertTriangle } from 'lucide-react';
 import './Dashboard.css';
 
 const GameCard: React.FC<{ game: Game; onPlay: (id: string, feed: string) => void; isPlaying: boolean }> = ({ game, onPlay, isPlaying }) => {
@@ -67,6 +67,19 @@ const Dashboard: React.FC = () => {
           <button className="btn" disabled>Next</button>
         </div>
       </div>
+
+      {!status.authenticated && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '10px',
+          background: 'rgba(255, 42, 95, 0.1)',
+          border: '1px solid rgba(255, 42, 95, 0.4)',
+          borderRadius: '8px', padding: '12px 16px',
+          marginBottom: '16px', color: '#ff2a5f', fontSize: '0.875rem',
+        }}>
+          <AlertTriangle size={16} />
+          Not authenticated with MLB.TV — go to Settings to add credentials before playing games.
+        </div>
+      )}
 
       <div className="game-grid">
         {games.length === 0 ? (

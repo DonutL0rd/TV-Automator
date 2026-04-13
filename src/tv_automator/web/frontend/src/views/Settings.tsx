@@ -23,12 +23,14 @@ const Settings: React.FC = () => {
 
   // Loading / Messages
   const [toast, setToast] = useState<{msg: string, isError: boolean} | null>(null);
+  const [mlbAuthenticated, setMlbAuthenticated] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetch('/api/settings')
       .then(r => r.json())
       .then(data => {
         setMlbUsername(data.mlb_username || '');
+        setMlbAuthenticated(!!data.mlb_authenticated);
         setAutoStart(!!data.auto_start);
         setDefaultFeed(data.default_feed || 'HOME');
         setStrikeZone(!!data.strike_zone_enabled);
@@ -60,9 +62,11 @@ const Settings: React.FC = () => {
       const data = await r.json();
       if (data.success) {
         showToast("MLB Credentials Saved & Verified!");
+        setMlbAuthenticated(true);
         setMlbPassword(''); // Clear password field for security layout
       } else {
         showToast(data.error || "MLB Auth Failed", true);
+        setMlbAuthenticated(false);
       }
     } catch (err) {
       showToast("Network Error", true);
@@ -132,6 +136,20 @@ const Settings: React.FC = () => {
           <div className="settings-card-header">
             <PlaySquare size={20} color="var(--neon-cyan)" />
             <h2 className="settings-card-title">MLB.TV Credentials</h2>
+            {mlbAuthenticated !== null && (
+              <span style={{
+                marginLeft: 'auto',
+                fontSize: '0.7rem',
+                fontWeight: 700,
+                padding: '2px 8px',
+                borderRadius: '4px',
+                background: mlbAuthenticated ? 'rgba(0,255,170,0.15)' : 'rgba(255,42,95,0.15)',
+                color: mlbAuthenticated ? 'var(--neon-cyan)' : '#ff2a5f',
+                border: `1px solid ${mlbAuthenticated ? 'var(--neon-cyan)' : '#ff2a5f'}`,
+              }}>
+                {mlbAuthenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}
+              </span>
+            )}
           </div>
           <form className="settings-field" onSubmit={handleMlbSave}>
             <label className="settings-label">Username / Email</label>
@@ -152,7 +170,7 @@ const Settings: React.FC = () => {
               onChange={e => setMlbPassword(e.target.value)} 
             />
             
-            <button className="btn btn-primary btn-save" type="submit" disabled={!mlbPassword}>
+            <button className="btn btn-primary btn-save" type="submit" disabled={!mlbPassword || !mlbUsername}>
               <Save size={16} /> Save & Authenticate
             </button>
           </form>
