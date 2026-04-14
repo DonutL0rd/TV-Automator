@@ -98,7 +98,7 @@ Game schedules come from the public [MLB Stats API](https://github.com/toddrob99
 │  ┌─────────────────────▼──────────────────────────┐  │
 │  │  FastAPI + uvicorn (port 5000)                 │  │
 │  │                                                │  │
-│  │  GET  /           → Dashboard HTML             │  │
+│  │  GET  /           → React SPA Frontend         │  │
 │  │  GET  /api/games  → Schedule from Stats API    │  │
 │  │  POST /api/play   → Get stream URL → navigate  │  │
 │  │  POST /api/stop   → Stop playback             │  │
@@ -170,7 +170,8 @@ TV-Automator/
 │   ├── main.py                        # Entry point (uvicorn)
 │   ├── config.py                      # Layered config (yaml + env)
 │   ├── web/
-│   │   └── app.py                     # FastAPI routes + dashboard HTML
+│   │   ├── app.py                     # FastAPI routes
+│   │   └── frontend/                  # React SPA (Vite + TypeScript)
 │   ├── providers/
 │   │   ├── base.py                    # Provider interface
 │   │   ├── mlb.py                     # MLB schedule (Stats API)

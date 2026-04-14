@@ -24,6 +24,7 @@ import httpx
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, FileResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from tv_automator.automator.browser_control import BrowserController
 from tv_automator.automator.cec_control import CECController
@@ -38,7 +39,6 @@ log = logging.getLogger(__name__)
 # ── Templates ───────────────────────────────────────────────────
 _TEMPLATE_DIR = Path(__file__).parent / "templates"
 _PLAYER_HTML = (_TEMPLATE_DIR / "player.html").read_text()
-_DASHBOARD_HTML = (_TEMPLATE_DIR / "dashboard.html").read_text()
 _SCREENSAVER_HTML = (_TEMPLATE_DIR / "screensaver.html").read_text()
 _YOUTUBE_HTML = (_TEMPLATE_DIR / "youtube.html").read_text()
 
@@ -714,9 +714,34 @@ def _game_to_dict(game: Game) -> dict:
 
 # ── Routes ───────────────────────────────────────────────────────
 
-@app.get("/", response_class=HTMLResponse)
+# Mount React static assets if built
+_FRONTEND_DIST = _TEMPLATE_DIR.parent / "frontend" / "dist"
+if (_FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
+
+@app.get("/", response_class=FileResponse)
+@app.get("/mlb", response_class=FileResponse)
+@app.get("/youtube", response_class=FileResponse)
+@app.get("/settings", response_class=FileResponse)
+@app.get("/music", response_class=FileResponse)
 async def dashboard():
-    return _DASHBOARD_HTML
+    index_file = _FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    return HTMLResponse("React frontend not built. Run 'npm run build' in src/tv_automator/web/frontend.")
+
+
+@app.get("/{filename}", include_in_schema=False)
+async def serve_root_asset(filename: str):
+    """Serve root-level public assets from the React dist directory (e.g. favicon.svg)."""
+    # os.path.basename strips any directory component, preventing path traversal
+    safe_name = os.path.basename(filename)
+    if not safe_name:
+        raise HTTPException(status_code=404)
+    file_path = _FRONTEND_DIST / safe_name
+    if file_path.is_file():
+        return FileResponse(str(file_path))
+    raise HTTPException(status_code=404)
 
 
 @app.get("/api/games")
@@ -777,7 +802,7 @@ async def play_youtube(body: dict):
 
     # Build nav URL — support resume position
     resume_pos = body.get("resume_position", 0)
-    nav_url = f"http://127.0.0.1:5000/youtube?v={video_id}"
+    nav_url = f"http://127.0.0.1:5000/tv/youtube?v={video_id}"
     if resume_pos and resume_pos > 5:
         nav_url += f"&t={int(resume_pos)}"
 
@@ -1545,6 +1570,9 @@ async def get_settings():
         "suggested_channels": {cid: name for cid, name in SUGGESTED_CHANNELS.items()},
         # Screensaver
         "screensaver_music_size": _config.get("screensaver", {}).get("music_size", "medium"),
+        # Navidrome
+        "navidrome_server_url": os.getenv("NAVIDROME_URL") or _config.get("navidrome", {}).get("server_url", ""),
+        "navidrome_username": os.getenv("NAVIDROME_USERNAME") or _config.get("navidrome", {}).get("username", ""),
     }
 
 
@@ -1639,16 +1667,25 @@ async def update_credentials(body: dict):
     password = body.get("mlb_password", "").strip()
     if not username or not password:
         raise HTTPException(400, "Username and password are required")
-    _config.update_nested("providers", "mlb", "username", value=username)
-    _config.update_nested("providers", "mlb", "password", value=password)
-    _config.save_user_config()
+
+    # Attempt login BEFORE persisting — we don't want to save credentials
+    # that we know are invalid, since the startup flow would retry them forever.
     ok = await _session.login(username, password)
+
     if ok:
+        _config.update_nested("providers", "mlb", "username", value=username)
+        _config.update_nested("providers", "mlb", "password", value=password)
+        _config.save_user_config()
         log.info("Credentials updated and login successful for %s", username)
+        # Refresh the schedule right away so the Dashboard sees games immediately
+        # instead of waiting for the next poll cycle.
+        asyncio.create_task(_scheduler.refresh())
+        await _broadcast_status()
         return {"success": True, "authenticated": True}
-    else:
-        log.warning("Credentials updated but login failed for %s", username)
-        return {"success": False, "authenticated": False, "error": "Login failed — check username/password"}
+
+    log.warning("Login failed for %s — credentials not saved", username)
+    await _broadcast_status()
+    return {"success": False, "authenticated": False, "error": "Login failed — check username/password"}
 
 
 # ── Screen power ────────────────────────────────────────────────
@@ -1952,6 +1989,11 @@ async def music_album(album_id: str):
     resp = await _navidrome_api("/rest/getAlbum", {"id": album_id})
     return resp.get("album", {})
 
+@app.get("/api/music/artist/{artist_id}")
+async def music_artist(artist_id: str):
+    resp = await _navidrome_api("/rest/getArtist", {"id": artist_id})
+    return resp.get("artist", {})
+
 
 @app.get("/api/music/search")
 async def music_search(query: str = "", artistCount: int = 5, albumCount: int = 10, songCount: int = 20):
@@ -1976,10 +2018,10 @@ async def music_playlist(playlist_id: str):
     return resp.get("playlist", {})
 
 
-@app.get("/api/music/random")
-async def music_random(size: int = 50):
-    resp = await _navidrome_api("/rest/getRandomSongs", {"size": str(size)})
-    return resp.get("randomSongs", {})
+@app.get("/api/music/radio")
+async def music_radio():
+    resp = await _navidrome_api("/rest/getInternetRadioStations")
+    return resp.get("internetRadioStations", {})
 
 
 @app.get("/api/music/cover/{item_id}")
@@ -2316,7 +2358,7 @@ async def screensaver_page():
     return _SCREENSAVER_HTML
 
 
-@app.get("/youtube", response_class=HTMLResponse)
+@app.get("/tv/youtube", response_class=HTMLResponse)
 async def youtube_page():
     return _YOUTUBE_HTML
 

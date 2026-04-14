@@ -1,0 +1,200 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  /* Ultra-dark canvas mapping */
+  --color-canvas: #030308;
+  --color-surface: #0a0a14;
+  --color-surface-hover: #121223;
+  --color-surface-raised: #1c1c36;
+  
+  /* Primary Neon palette */
+  --neon-cyan: #00e5ff;
+  --neon-cyan-dim: rgba(0, 229, 255, 0.15);
+  --neon-green: #00ffaa;
+  --neon-green-dim: rgba(0, 255, 170, 0.15);
+  --neon-red: #ff2a5f;
+  
+  /* Text and muted */
+  --text-primary: #f8f9fa;
+  --text-secondary: #8b92a5;
+  --text-tertiary: #525870;
+
+  /* Structural layers */
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-active: rgba(255, 255, 255, 0.12);
+  --border-neon: rgba(0, 229, 255, 0.4);
+
+  /* Shadows (multi-layered for depth) */
+  --shadow-sm: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.6), 0 0 0 1px var(--border-subtle);
+  --shadow-neon: 0 0 30px rgba(0,229,255,0.1), 0 0 0 1px var(--border-neon);
+  --shadow-neon-green: 0 0 30px rgba(0,255,170,0.1), 0 0 0 1px rgba(0,255,170,0.4);
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Transitions */
+  --trans-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  --trans-smooth: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --trans-spring: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* App should fill the screen tightly */
+  
+  /* Extremely subtle ambient glow in the top-left and bottom-right */
+  background-image: 
+    radial-gradient(circle at 15% 0%, rgba(0, 229, 255, 0.03) 0%, transparent 40%),
+    radial-gradient(circle at 85% 100%, rgba(0, 255, 170, 0.02) 0%, transparent 40%);
+}
+
+#root {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Base utility classes for ultra-modern UI */
+.glass-panel {
+  background: rgba(10, 10, 20, 0.6);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Hyper-specific typography tracking */
+.tracking-tight { letter-spacing: -0.02em; }
+.tracking-wide { letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* Micro animations */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fade-in-up var(--trans-spring) forwards;
+}
+
+@keyframes pulse-neon {
+  0% { box-shadow: 0 0 0 1px rgba(0,255,170,0.4), 0 0 20px rgba(0,255,170,0.1); }
+  50% { box-shadow: 0 0 0 1px var(--neon-green), 0 0 30px rgba(0,255,170,0.25); }
+  100% { box-shadow: 0 0 0 1px rgba(0,255,170,0.4), 0 0 20px rgba(0,255,170,0.1); }
+}
+
+.live-glow {
+  animation: pulse-neon 2.5s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.live-pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  animation: pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+/* Standardized Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all var(--trans-smooth);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255,255,255,0.03);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.08);
+  border-color: var(--border-active);
+  transform: translateY(-1px);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--text-primary);
+  color: var(--color-canvas);
+  border: none;
+}
+.btn-primary:hover:not(:disabled) {
+  background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255,255,255,0.2);
+}
+
+.btn-neon {
+  background: var(--neon-cyan-dim);
+  color: var(--neon-cyan);
+  border: 1px solid rgba(0,229,255,0.3);
+}
+.btn-neon:hover:not(:disabled) {
+  background: rgba(0,229,255,0.2);
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 15px rgba(0,229,255,0.3);
+}
