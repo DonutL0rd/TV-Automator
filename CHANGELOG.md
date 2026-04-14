@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.3.0] - 2026-04-13
+
+### Added
+- **React Frontend** — complete rewrite of the web UI using Vite, React, and TypeScript into a single-page application (SPA)
+- **Music Library UI** — browser and playback control UI with Subsonic/Navidrome integration (`Music.tsx`), including queue management, volume control, and album tracklist drill-down UI
+- **Modernized Dashboard UI** — improved game list, detail panel, persistent now-playing bar, and home/away feed selection integration (`Dashboard.tsx`)
+- **YouTube Interface** — purely mobile-focused responsive list layout, sticky URL bar, and enhanced video cards with duration/progress tracking badges (`YouTube.tsx`)
+
+### Changed
+- **Web Interface Architecture** — replaced server-rendered legacy HTML dashboard templates with a standalone React SPA frontend
+- **Music playback UX** — optimized music player UI with optimistic UI updates, debounced volume control, and split polling intervals for better performance without full-page reloads
+- **Docker build** — updated `Dockerfile` to support serving the new frontend application
+
+### Removed
+- `src/tv_automator/web/templates/dashboard.html` — legacy template entirely replaced by the `src/tv_automator/web/frontend/` app
+
+### New files
+- `src/tv_automator/web/frontend/` — full Vite-based React project directory
+
 ## [0.2.0] - 2026-03-30
 
 ### Added

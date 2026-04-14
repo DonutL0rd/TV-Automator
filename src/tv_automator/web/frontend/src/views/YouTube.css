@@ -545,29 +545,115 @@
   }
 
   .yt-url-bar {
-    border-radius: 12px;
-    margin-bottom: 20px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    border-radius: 20px 20px 0 0;
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    background: rgba(10, 10, 20, 0.9);
+    padding: 16px;
+    z-index: 100;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.6);
   }
 
+  .yt-scroll-body {
+    gap: 24px;
+    padding-bottom: 110px; /* Content clear of sticky bar */
+  }
+
+  /* List view for video grids */
   .yt-grid {
     grid-template-columns: 1fr;
     gap: 12px;
   }
 
-  .yt-loading {
-    grid-template-columns: 1fr;
+  .yt-grid .yt-card {
+    flex-direction: row;
+    align-items: center;
+    padding: 8px;
+    gap: 12px;
   }
 
-  .yt-scroll-body {
-    gap: 24px;
+  .yt-grid .yt-card-thumb {
+    width: 140px;
+    height: 78px;
+    aspect-ratio: auto;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .yt-grid .yt-card-info {
+    padding: 0 32px 0 0; /* Space for delete button */
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
   }
 
   .yt-card-title {
     font-size: 0.88rem;
   }
 
+  .yt-grid .yt-card-meta {
+    margin-top: 4px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Prevent card hover actions on mobile */
+  .yt-card:hover {
+    transform: none;
+  }
+  .yt-card:active {
+    transform: scale(0.98);
+  }
+
+  .yt-card-delete {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08); /* Gentle fallback background */
+    top: 50%;
+    transform: translateY(-50%);
+    right: 8px;
+  }
+  
+  .yt-channel-row .yt-card-delete {
+    top: 8px;
+    transform: none; /* keep it top right for suggested channels if any */
+  }
+
+  /* Smaller suggested channel cards */
   .yt-channel-row .yt-card {
-    min-width: 200px;
-    max-width: 260px;
+    min-width: 160px;
+    max-width: 200px;
+  }
+
+  .yt-loading {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .yt-loading .yt-skeleton {
+    display: flex;
+    flex-direction: row;
+    padding: 8px;
+    gap: 12px;
+    border-radius: 14px;
+  }
+
+  .yt-loading .yt-skeleton-thumb {
+    width: 140px;
+    height: 78px;
+    aspect-ratio: auto;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .yt-loading .yt-skeleton-info {
+    padding: 0;
+    flex: 1;
+    justify-content: center;
   }
 }
